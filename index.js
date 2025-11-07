@@ -28,10 +28,34 @@ app.post('/api/create-mercadopago-preference', async (req, res) => {
     } = req.body;
 
     // Validar campos requeridos
+app.post('/api/create-mercadopago-preference', async (req, res) => {
+  try {
+    const { 
+      title, 
+      quantity, 
+      unit_price, 
+      payer_name, 
+      payer_email, 
+      payer_phone,
+      metadata 
+    } = req.body;
+
+    // Validar campos requeridos
     if (!title || !unit_price || !payer_email) {
       return res.status(400).json({ 
         error: 'Faltan campos requeridos: title, unit_price, payer_email' 
       });
+    }
+
+    // Limpiar y convertir teléfono a número
+    let phoneNumber = '';
+    if (payer_phone) {
+      // Remover espacios, guiones, paréntesis, +52, etc
+      phoneNumber = payer_phone.replace(/[\s\-\(\)\+]/g, '');
+      // Si empieza con 52, quitarlo
+      if (phoneNumber.startsWith('52')) {
+        phoneNumber = phoneNumber.substring(2);
+      }
     }
 
     // Crear preferencia con el formato correcto que Mercado Pago espera
@@ -48,7 +72,8 @@ app.post('/api/create-mercadopago-preference', async (req, res) => {
         name: payer_name || 'Cliente',
         email: payer_email,
         phone: {
-          number: payer_phone || ''
+          area_code: '52',
+          number: phoneNumber ? parseInt(phoneNumber) : 5555555555
         }
       },
       payment_methods: {
@@ -89,7 +114,6 @@ app.post('/api/create-mercadopago-preference', async (req, res) => {
     });
   }
 });
-
 // Ruta de prueba
 app.get('/', (req, res) => {
   res.json({ message: 'Backend de Tootal Tickets funcionando!' });
