@@ -28,37 +28,46 @@ app.post('/api/create-mercadopago-preference', async (req, res) => {
     } = req.body;
 
     // Validar campos requeridos
-app.post('/api/create-mercadopago-preference', async (req, res) => {
-  try {
-    const { 
-      title, 
-      quantity, 
-      unit_price, 
-      payer_name, 
-      payer_email, 
-      payer_phone,
-      metadata 
-    } = req.body;
-
-    // Validar campos requeridos
     if (!title || !unit_price || !payer_email) {
       return res.status(400).json({ 
         error: 'Faltan campos requeridos: title, unit_price, payer_email' 
       });
     }
 
-    // Limpiar y convertir teléfono a número
-    let phoneNumber = '';
+    // Limpiar y convertir teléfono a número (SOLO dígitos)
+    let phoneNumber = 5555555555; // Valor predeterminado
     if (payer_phone) {
-      // Remover espacios, guiones, paréntesis, +52, etc
-      phoneNumber = payer_phone.replace(/[\s\-\(\)\+]/g, '');
-      // Si empieza con 52, quitarlo
-      if (phoneNumber.startsWith('52')) {
-        phoneNumber = phoneNumber.substring(2);
+      // Remover TODO excepto números
+      const cleanPhone = String(payer_phone).replace(/\D/g, '');
+      console.log('📱 Teléfono limpio:', cleanPhone);
+      
+      // Si tiene dígitos, convertir a número
+      if (cleanPhone.length > 0) {
+        // Si empieza con 52 (código de México), quitarlo
+        const phoneWithoutCountryCode = cleanPhone.startsWith('52') && cleanPhone.length > 10 
+          ? cleanPhone.substring(2) 
+          : cleanPhone;
+        
+        phoneNumber = Number(phoneWithoutCountryCode);
+        console.log('📱 Teléfono convertido a número:', phoneNumber, typeof phoneNumber);
       }
     }
 
-    // Crear preferencia con el formato correcto que Mercado Pago espera
+    // Crear objeto payer
+    const payerData = {
+      name: payer_name || 'Cliente',
+      email: payer_email
+    };
+
+    // Solo agregar phone si es un número válido
+    if (phoneNumber && !isNaN(phoneNumber) && phoneNumber > 0) {
+      payerData.phone = {
+        area_code: '52',
+        number: phoneNumber
+      };
+    }
+
+    // Crear preferencia con el formato correcto
     const preferenceData = {
       items: [
         {
@@ -68,14 +77,7 @@ app.post('/api/create-mercadopago-preference', async (req, res) => {
           currency_id: 'MXN'
         }
       ],
-      payer: {
-        name: payer_name || 'Cliente',
-        email: payer_email,
-        phone: {
-          area_code: '52',
-          number: phoneNumber ? parseInt(phoneNumber) : 5555555555
-        }
-      },
+      payer: payerData,
       payment_methods: {
         excluded_payment_types: [
           { id: 'credit_card' },
@@ -113,8 +115,7 @@ app.post('/api/create-mercadopago-preference', async (req, res) => {
       details: error.cause
     });
   }
-});
-// Ruta de prueba
+});// Ruta de prueba
 app.get('/', (req, res) => {
   res.json({ message: 'Backend de Tootal Tickets funcionando!' });
 });
